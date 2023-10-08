@@ -5,30 +5,29 @@ import pandas as pd
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
 
+
 def run_baseline(model_name):
     classes = ['fire', 'non_fire']
     detected = False
-
-
 
     img_size = 224
     # Loading the trained fire classification model
     model = load_model(model_name)
 
     # OpenCV VideoCapture object
-    cap = cv2.VideoCapture('test.mp4')
+    cap = cv2.imread("video_frames/frame_0000.jpg")
 
-    # Initialize frame count
+    # Initialize frame count and variables for calculating accuracy
     frame = 0
     first_frame = np.nan
     time_list = []
 
-    while True:
-        rval, image = cap.read()
-        if not rval:
-            break
 
-        frame += 1
+    while True:
+        image = cap
+
+        cv2.imshow("sd", image)
+        cv2.waitKey(1)
 
         # Preprocess the image according to the model
         image = cv2.resize(image, (img_size, img_size))
@@ -36,6 +35,7 @@ def run_baseline(model_name):
             image = image.astype("float") / 255.0
         elif model_name.lower() == 'mobilenet':
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image = img_to_array(image)
         image = np.expand_dims(image, axis=0)
         if model_name.lower() == 'mobilenet':
@@ -58,12 +58,10 @@ def run_baseline(model_name):
                 first_frame = frame
             detected = True
 
-    cap.release()
-    cv2.destroyAllWindows()
+        break
 
     output = pd.DataFrame({
-        'video': ['test.mp4'],
-        'network': [model_name],
+        'Source': ["Sdfsdf"],
         'detected': [detected],
         'first_frame': [first_frame],
         'time_avg': [np.mean(time_list)]
@@ -71,8 +69,10 @@ def run_baseline(model_name):
 
     return output
 
+
 if __name__ == "__main__":
+
     # Run inference
-    result = run_baseline(model_name="mobilenet.h5")
+    result = run_baseline(model_name="keras_model.h5")
     print("Results")
     print(result)
