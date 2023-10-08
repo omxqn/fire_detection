@@ -1,51 +1,33 @@
-from keras.models import load_model  # TensorFlow is required for Keras to work
-import cv2  # Install opencv-python
-import numpy as np
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, GlobalAveragePooling2D, Dense, Conv2D
+from tensorflow.keras.applications import MobileNetV2
 
-# Disable scientific notation for clarity
-np.set_printoptions(suppress=True)
+# Define the number of classes in your classification task
+num_classes = 3  # Replace with your actual number of classes
 
-# Load the model
-model = load_model("keras_Model.h5", compile=False)
+# Define the base model (e.g., MobileNetV2)
+base_model = MobileNetV2(input_shape=(224, 224, 3), include_top=False, weights='imagenet')
 
-# Load the labels
-class_names = open("labels.txt", "r").readlines()
+# Reshape the input data to match the base model's input shape
+input_tensor = Input(shape=(224, 224, 3))  # Replace with your input shape
+x = base_model(input_tensor)
 
-# CAMERA can be 0 or 1 based on default camera of your computer
-camera = cv2.VideoCapture('test.mp4')
+# Add additional convolutional layers if needed
+x = Conv2D(256, (3, 3), activation='relu')(x)
+x = GlobalAveragePooling2D()(x)
 
-while True:
-    # Grab the webcamera's image.
-    ret, image = camera.read()
+# Define the classification head (replace num_classes with your number of classes)
+class_output = Dense(num_classes, activation='softmax', name='class_output')(x)
 
-    # Resize the raw image into (224-height,224-width) pixels
-    image = cv2.resize(image, (224, 224), interpolation=cv2.INTER_AREA)
+# Define the regression head for bounding box coordinates (4 values: x, y, width, height)
+bbox_output = Dense(4, activation='linear', name='bbox_output')(x)
 
-    # Show the image in a window
-    cv2.imshow("Webcam Image", image)
+# Create the final model with both outputs
+model = Model(inputs=input_tensor, outputs=[class_output, bbox_output])
 
-    # Make the image a numpy array and reshape it to the models input shape.
-    image = np.asarray(image, dtype=np.float32).reshape(1, 224, 224, 3)
-
-    # Normalize the image array
-    image = (image / 127.5) - 1
-
-    # Predicts the model
-    prediction = model.predict(image)
-    index = np.argmax(prediction)
-    class_name = class_names[index]
-    confidence_score = prediction[0][index]
-
-    # Print prediction and confidence score
-    print("Class:", class_name[2:], end="")
-    print("Confidence Score:", str(np.round(confidence_score * 100))[:-2], "%")
-
-    # Listen to the keyboard for presses.
-    keyboard_input = cv2.waitKey(1)
-
-    # 27 is the ASCII for the esc key on your keyboard.
-    if keyboard_input == 27:
-        break
-
-camera.release()
-cv2.destroyAllWindows()
+# Print the expected input shape of the base model
+print("Expected input shape of base model:", base_model.input_shape)
+model.compile(optimizer='adam',
+              loss={'class_output': 'categorical_crossentropy', 'bbox_output': 'mean_squared_error'},
+              loss_weights={'class_output': 1.0, 'bbox_output': 1.0})
+model.save("ss.h5")
