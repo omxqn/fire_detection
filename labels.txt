@@ -1,0 +1,3 @@
+0 Fire
+1 Non-Fire
+2 Smoking
